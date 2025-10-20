@@ -81,6 +81,8 @@ while true; do
         main_status="$status_json"
     fi
 
+    echo "Current main status: $main_status"
+
     if [[ "$main_status" == "DONE"     || 
           "$main_status" == "FAILED"   || 
           "$main_status" == "UNKNOWN"  || 
@@ -98,5 +100,5 @@ while true; do
         break
     fi
 
-    sleep 5
+    sleep 120
 done

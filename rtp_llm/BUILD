@@ -97,6 +97,7 @@ requirement([
     "portalocker",
     "concurrent_log_handler",
     "aiter",
+    "fastsafetensors",
 ] + tensorrt)
 
 filegroup(
@@ -237,6 +238,12 @@ py_library(
 filegroup(
     name = "alog_config",
     srcs = ["config/alog.conf"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "release_version",
+    srcs = ["release_version.py"],
     visibility = ["//visibility:public"],
 )
 
@@ -595,6 +602,8 @@ py_library(
     name = "testlib",
     data = [
         "//rtp_llm/test/model_test/fake_test/testdata:testdata",
+        "//:th_transformer",
+        "//:rtp_compute_ops",
     ],
     deps = [
         ":rtp_llm_lib",

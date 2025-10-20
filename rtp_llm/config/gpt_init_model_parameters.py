@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import os
 import typing
 
@@ -288,7 +289,6 @@ class GptInitModelParameters:
     layer_num: int
     layernorm_eps: float
     layernorm_type: str
-    load_balance_policy_name: str
     load_cache_timeout_ms: int
     local_rank: int
     logit_scale: float
@@ -346,13 +346,13 @@ class GptInitModelParameters:
     rotary_factor1: float
     rotary_factor2: float
     partial_rotary_factor: float
+    rotary_embedding_extrapolation_factor: float
     scheduler_reserve_resource_ratio: int
     scoring_func: int
     seq_size_per_block: int
     size_per_head: int
     softmax_extra_scale: float
     special_tokens: SpecialTokens
-    sync_status_interval_ms: int
     tokenizer_path: str
     tp_nccl_port: int
     tp_rank: int
@@ -713,7 +713,10 @@ class GptInitModelParameters:
         # SchedulerConfig
         self.gpt_init_params.scheduler_config = SchedulerConfig(
             use_batch_decode_scheduler=get_env_bool("USE_BATCH_DECODE_SCHEDULER"),
+            use_gather_batch_scheduler=get_env_bool("USE_GATHER_BATCH_SCHEDULER"),
         )
+        if self.gpt_init_params.scheduler_config.use_gather_batch_scheduler and self.gpt_init_params.scheduler_config.use_batch_decode_scheduler:
+            raise ValueError("use_gather_batch_scheduler and use_batch_decode_scheduler cannot be true at the same time")
 
         # BatchDecodeSchedulerConfig
         self.gpt_init_params.batch_decode_scheduler_config = BatchDecodeSchedulerConfig(
@@ -760,12 +763,8 @@ class GptInitModelParameters:
 
         # MiscellaneousConfig
         self.gpt_init_params.misc_config = MiscellaneousConfig(
-            load_balance=get_env_int("LOAD_BALANCE", 0),
-            step_records_time_range=get_env_int(
-                "STEP_RECORDS_TIME_RANGE", 60 * 1000 * 1000
-            ),
-            step_records_max_size=get_env_int("STEP_RECORDS_MAX_SIZE", 1000),
             disable_pdl=get_env_bool("DISABLE_PDL", True),
+            aux_string=get_env_str("AUX_STRING", ""),
         )
 
         # ArpcConfig
@@ -1112,26 +1111,6 @@ class GptInitModelParameters:
             )
             logging.info(f"decode_entrance: {self.decode_entrance}")
 
-            if (not self.decode_entrance and self.role_type in [RoleType.PREFILL]) or (
-                self.decode_entrance and self.role_type in [RoleType.DECODE]
-            ):
-                self.load_balance_policy_name = (
-                    self.py_env_configs.pd_separation_config.load_balance_policy_name
-                )
-                logging.info(
-                    f"load_balance_policy_name: {self.load_balance_policy_name}"
-                )
-                policy_list = ["RR", "WRR"]
-                if not self.load_balance_policy_name in policy_list:
-                    raise Exception(
-                        f"load_balance_policy_name {self.load_balance_policy_name} "
-                        f"is not right, it must in {policy_list}"
-                    )
-                self.sync_status_interval_ms = (
-                    self.py_env_configs.pd_separation_config.sync_status_interval_ms
-                )
-                logging.info(f"sync_status_interval_ms: {self.sync_status_interval_ms}")
-
         self.scheduler_reserve_resource_ratio = int(
             os.environ.get("SCHEDUlER_RESERVE_RESOURCE_RATIO", 5)
         )
@@ -1169,6 +1148,34 @@ class GptInitModelParameters:
             f"use stop_words_str_list [{self.special_tokens.stop_words_str_list }],"
             f" stop_words_id_list [{self.special_tokens.stop_words_id_list}]"
         )
+
+        model_override_args = json.loads(StaticConfig.model_config.json_model_override_args)
+        if model_override_args:
+            if "rope_scaling" in model_override_args:
+                # be consistent with RopeStyle
+                rope_type = {"no": 0, "base": 1, "glm2": 2, "dynamicntk": 3,
+                             "qwendynamicntk": 4, "yarn": 5, "llama3": 6, "mrope": 7}
+                rope_override_args = model_override_args["rope_scaling"]
+                assert "type" in rope_override_args and rope_override_args["type"] in rope_type
+                self.rotary_embedding_style = rope_type[rope_override_args["type"]]
+                if rope_override_args["type"] == "yarn":
+                    assert "factor" in rope_override_args and "original_max_position_embeddings" in rope_override_args
+                    self.rotary_embedding_scale = rope_override_args["factor"]
+                    self.org_embedding_max_pos = rope_override_args["original_max_position_embeddings"]
+                    self.rotary_factor1 = rope_override_args.get("beta_slow", 1.0)
+                    self.rotary_factor2 = rope_override_args.get("beta_fast", 1.0)
+                    mscale = rope_override_args.get("mscale", 1.0)
+                    self.rotary_embedding_mscale = float(
+                        (1.0 if self.rotary_embedding_scale <= 1 else 0.1 * math.log(self.rotary_embedding_scale) + 1.0) * mscale)
+                    self.rotary_embedding_extrapolation_factor = rope_override_args.get("extrapolation_factor", 1.0)
+
+                logging.info(f"rotary_embedding_style: {self.rotary_embedding_style}, "
+                             f"rotary_embedding_scale: {self.rotary_embedding_scale}, "
+                             f"org_embedding_max_pos: {self.org_embedding_max_pos}, "
+                             f"rotary_factor1: {self.rotary_factor1}, "
+                             f"rotary_factor2: {self.rotary_factor2}, "
+                             f"rotary_embedding_mscale: {self.rotary_embedding_mscale}, "
+                             f"rotary_embedding_extrapolation_factor: {self.rotary_embedding_extrapolation_factor}")
 
     def _init_precision_config(
         self,

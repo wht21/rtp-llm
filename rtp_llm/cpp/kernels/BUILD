@@ -137,7 +137,7 @@ cc_library(
     name = "cuda_cu",
     deps = [
         ":cuda_no_aux_tc",
-        ":cuda_quantization", 
+        ":cuda_quantization",
         ":cuda_moe",
         ":cuda_comm",
     ],
@@ -212,7 +212,7 @@ cc_library(
     name = "rocm_basic",
     deps = [
         ":rocm_layernorm",
-        ":rocm_quantization", 
+        ":rocm_quantization",
         ":rocm_fused_qk_rmsnorm",
     ],
     visibility = ["//visibility:public"],
@@ -265,13 +265,11 @@ cc_library(
     name = "kernels_layernorm",
     srcs = [
         "layernorm_kernels.cu",
-        "alpha_layernorm_kernels.cu",
         "rmsnormKernels.cu",
         "fused_qk_rmsnorm.cu",
     ],
     hdrs = [
         "layernorm_kernels.h",
-        "alpha_layernorm_kernels.h",
         "rmsnormKernels.h",
         "fused_qk_rmsnorm.h",
     ],
@@ -501,6 +499,27 @@ cc_library(
 )
 
 cc_library(
+    name = "kernels_ep_util",
+    srcs = glob([
+        "moe/*.cu",
+    ]),
+    hdrs = glob([
+        "moe/*.h",
+    ]),
+    deps = any_cuda_deps + [
+        "//rtp_llm/cpp/cuda/cutlass:cutlass_interface",
+        "//rtp_llm/cpp/cuda:trt_utils",
+        "//rtp_llm/cpp/model_utils:model_utils",
+        "@cutlass_h_moe//:cutlass",
+        "@cutlass_h_moe//:cutlass_utils",
+        "//rtp_llm/cpp/cuda/cutlass/cutlass_extensions:cutlass_extensions",
+    ]+ torch_deps(),
+    copts = any_cuda_copts(),
+    include_prefix = "src",
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "kernels_eplb",
     srcs = glob([
         "eplb/*.cu",
@@ -541,7 +560,7 @@ cc_library(
         ":kernels_sampling",
         ":kernels_attention",
         ":kernels_embedding",
-        ":kernels_tensor_ops", 
+        ":kernels_tensor_ops",
         ":kernels_kv_cache",
         ":kernels_residual",
         ":kernels_copy",

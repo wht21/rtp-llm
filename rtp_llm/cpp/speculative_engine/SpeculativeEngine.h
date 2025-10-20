@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rtp_llm/cpp/engine_base/EngineBase.h"
+#include "rtp_llm/cpp/cache/WarmUpResult.h"
 #include "rtp_llm/cpp/metrics/RtpLLMMetrics.h"
 #include "rtp_llm/cpp/speculative_engine/propose_executor/MTPStream.h"
 #include "rtp_llm/cpp/speculative_engine/propose_executor/EagleStream.h"
@@ -83,10 +84,6 @@ public:
         }
     }
 
-    const ResourceContext& resourceContext() const {
-        return resource_context_;
-    }
-
     bool isMTPEagle() override {
         return sp_type_ == "mtp" || isEagle();
     }
@@ -158,8 +155,6 @@ private:
     const std::string               sp_type_;
     std::thread                     loop_thread_;
     std::atomic<bool>               running_{false};
-    ResourceContext                 resource_context_;
-    StepRecorder                    step_recorder_;
     std::shared_ptr<CudaProfiler_E> profiler_;
     int                             profiler_step_ = 0;
 };

@@ -235,7 +235,6 @@ class ServerArgsDefaultTest(TestCase):
         self.assertEqual(env.get("USE_FLOAT32"), "0")
         self.assertIsNone(env.get("ORIGINAL_CHECKPOINT_PATH"))
         self.assertEqual(env.get("MLA_OPS_TYPE"), "AUTO")
-        self.assertEqual(env.get("PARALLEL_BATCH"), "0")
         self.assertIsNone(env.get("FT_PLUGIN_PATH"))
         self.assertIsNone(env.get("WEIGHT_TYPE"))
         self.assertIsNone(env.get("TASK_TYPE"))
@@ -247,6 +246,7 @@ class ServerArgsDefaultTest(TestCase):
         self.assertIsNone(env.get("DASHSCOPE_HTTP_URL"))
         self.assertIsNone(env.get("DASHSCOPE_WEBSOCKET_URL"))
         self.assertEqual(env.get("OPENAI_API_KEY"), "EMPTY")
+        self.assertEqual(env.get("JSON_MODEL_OVERRIDE_ARGS"), "{}")
 
         # 27. Lora Configuration
         self.assertEqual(env.get("LORA_INFO"), "{}")
@@ -265,9 +265,6 @@ class ServerArgsDefaultTest(TestCase):
         self.assertEqual(env.get("LLAVA_CHAT_TEMPLATE"), "")
 
         # 30. Miscellaneous Configuration
-        self.assertEqual(env.get("LOAD_BALANCE"), "0")
-        self.assertEqual(env.get("STEP_RECORDS_TIME_RANGE"), "60000000")
-        self.assertEqual(env.get("STEP_RECORDS_MAX_SIZE"), "1000")
         self.assertEqual(env.get("DISABLE_PDL"), "1")
 
 
@@ -640,8 +637,6 @@ class ServerArgsSetTest(TestCase):
             "/path/to/original/ckpt",
             "--mla_ops_type",
             "CUSTOM",
-            "--parallel_batch",
-            "1",
             "--ft_plugin_path",
             "/path/to/plugin",
             "--weight_type",
@@ -664,6 +659,8 @@ class ServerArgsSetTest(TestCase):
             "ws://test.url",
             "--openai_api_key",
             "test_openai_key",
+            "--json_model_override_args",
+            '{"rope_scaling":{"type":"yarn","factor":2.0,"original_max_position_embeddings":32768,"beta_slow":1.0,"beta_fast":1.0,"mscale":1.0,"extrapolation_factor":1.0}}',
             # 27. Lora Configuration
             "--lora_info",
             '{"lora1": "/path/to/lora1"}',
@@ -688,12 +685,6 @@ class ServerArgsSetTest(TestCase):
             "--llava_chat_template",
             "llava_template_string",
             # 30. Miscellaneous Configuration
-            "--load_balance",
-            "True",
-            "--step_records_time_range",
-            "240000000",
-            "--step_records_max_size",
-            "4000",
             "--disable_pdl",
             "True",
             # 31. PD-Separation Configuration
@@ -701,8 +692,6 @@ class ServerArgsSetTest(TestCase):
             "2",
             "--decode_entrance",
             "1",
-            "--sync_status_interval_ms",
-            "125",
             # 32 jit
             "--remote_jit_dir",
             "/home/admin/jit_dir",
@@ -930,7 +919,6 @@ class ServerArgsSetTest(TestCase):
         self.assertEqual(env["USE_FLOAT32"], "1")
         self.assertEqual(env["ORIGINAL_CHECKPOINT_PATH"], "/path/to/original/ckpt")
         self.assertEqual(env["MLA_OPS_TYPE"], "CUSTOM")
-        self.assertEqual(env["PARALLEL_BATCH"], "1")
         self.assertEqual(env["FT_PLUGIN_PATH"], "/path/to/plugin")
         self.assertEqual(env["WEIGHT_TYPE"], "FP16")
         self.assertEqual(env["TASK_TYPE"], "generation")
@@ -942,6 +930,8 @@ class ServerArgsSetTest(TestCase):
         self.assertEqual(env["DASHSCOPE_HTTP_URL"], "http://test.url")
         self.assertEqual(env["DASHSCOPE_WEBSOCKET_URL"], "ws://test.url")
         self.assertEqual(env["OPENAI_API_KEY"], "test_openai_key")
+        self.assertEqual(env["JSON_MODEL_OVERRIDE_ARGS"],
+                         '{"rope_scaling":{"type":"yarn","factor":2.0,"original_max_position_embeddings":32768,"beta_slow":1.0,"beta_fast":1.0,"mscale":1.0,"extrapolation_factor":1.0}}')
 
         # 27. Lora Configuration
         self.assertEqual(env["LORA_INFO"], '{"lora1": "/path/to/lora1"}')
@@ -960,15 +950,14 @@ class ServerArgsSetTest(TestCase):
         self.assertEqual(env["LLAVA_CHAT_TEMPLATE"], "llava_template_string")
 
         # 30. Miscellaneous Configuration
-        self.assertEqual(env["LOAD_BALANCE"], "1")
-        self.assertEqual(env["STEP_RECORDS_TIME_RANGE"], "240000000")
-        self.assertEqual(env["STEP_RECORDS_MAX_SIZE"], "4000")
         self.assertEqual(env["DISABLE_PDL"], "1")
+        self.assertEqual(
+            env["AUX_STRING"], ""
+        )
 
         # 31. PD-Separation Configuration
         self.assertEqual(env["PREFILL_RETRY_TIMES"], "2")
         self.assertEqual(env["DECODE_ENTRANCE"], "1")
-        self.assertEqual(env["SYNC_STATUS_INTERVAL_MS"], "125")
 
         # 32. jit
         self.assertEqual(env["REMOTE_JIT_DIR"], "/home/admin/jit_dir")

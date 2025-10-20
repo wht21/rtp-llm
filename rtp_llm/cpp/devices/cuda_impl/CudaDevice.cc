@@ -12,7 +12,6 @@
 #include "rtp_llm/cpp/utils/Logger.h"
 #include "rtp_llm/cpp/core/torch_utils/torch_cuda_allocator.h"
 #include "rtp_llm/cpp/core/torch_utils/TorchEvent.h"
-#include "rtp_llm/cpp/disaggregate/cache_store/NormalCacheStore.h"
 #include "rtp_llm/cpp/kernels/mask_logits.h"
 #include "rtp_llm/cpp/config/ConfigModules.h"
 #include <cuda_runtime.h>
@@ -492,6 +491,14 @@ DevicePrepOutput CudaDevice::prepareModelRun(const DevicePrepParams& params) {
                 fmha_type_ = FMHAType::FLASH_INFER;
             }
 #endif
+            else if (paged_kv_fmha) {
+                if (use_trtv2_fmha_paged && cufmha_runner_->trtV2FmhaPagedSupport()) {
+                    fmha_type_ = FMHAType::PAGED_TRT_V2;
+                } else if (use_open_source_fmha_paged && cufmha_runner_->openSourceFmhaSupport()
+                        && params.configs.tokens_per_block % 256 == 0) {
+                    fmha_type_ = FMHAType::PAGED_OPEN_SOURCE;
+                }
+            }
         } else if (paged_kv_fmha) {
             if (use_trtv2_fmha_paged && cufmha_runner_->trtV2FmhaPagedSupport()) {
                 fmha_type_ = FMHAType::PAGED_TRT_V2;

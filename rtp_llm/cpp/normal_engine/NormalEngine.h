@@ -10,7 +10,9 @@
 #include "rtp_llm/cpp/engine_base/EngineBase.h"
 #include "rtp_llm/cpp/engine_base/TorchProfiler.h"
 #include "rtp_llm/cpp/cache/CacheManager.h"
-#include "rtp_llm/cpp/dataclass/EngineInitParameter.h"
+#include "rtp_llm/cpp/engine_base/EngineInitParams.h"
+#include "rtp_llm/cpp/engine_base/ProposeModelEngineInitParams.h"
+#include "rtp_llm/cpp/cache/WarmUpResult.h"
 #include "rtp_llm/cpp/engine_base/Executor.h"
 #include "rtp_llm/cpp/models/GptModel.h"
 #include "rtp_llm/cpp/engine_base/schedulers/SchedulerBase.h"
@@ -62,7 +64,6 @@ private:
     std::atomic<bool>               running_{false};
     std::unique_ptr<Executor>       executor_;
     const rtp_llm::GptInitParameter params_;
-    StepRecorder                    step_recorder_;
     kmonitor::MetricsReporterPtr    metrics_reporter_;
     std::shared_ptr<CudaProfiler>   profiler_;
     int                             profiler_step_     = 0;

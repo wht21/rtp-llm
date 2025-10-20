@@ -387,10 +387,11 @@ void register_cache_store_config(pybind11::module& m) {
 // SchedulerConfig
 void register_scheduler_config(pybind11::module& m) {
     pybind11::class_<SchedulerConfig>(m, "SchedulerConfig")
-        .def(pybind11::init<bool>(), pybind11::arg("use_batch_decode_scheduler") = false)
+        .def(pybind11::init<bool, bool>(), pybind11::arg("use_batch_decode_scheduler") = false, pybind11::arg("use_gather_batch_scheduler") = false)
         .def("to_string", &SchedulerConfig::to_string)
         .def("update_from_env", &SchedulerConfig::update_from_env_for_test)
-        .def_readwrite("use_batch_decode_scheduler", &SchedulerConfig::use_batch_decode_scheduler);
+        .def_readwrite("use_batch_decode_scheduler", &SchedulerConfig::use_batch_decode_scheduler)
+        .def_readwrite("use_gather_batch_scheduler", &SchedulerConfig::use_gather_batch_scheduler);
 }
 
 // BatchDecodeSchedulerConfig
@@ -426,19 +427,14 @@ void register_fifo_scheduler_config(pybind11::module& m) {
 // MiscellaneousConfig
 void register_misc_config(pybind11::module& m) {
     pybind11::class_<MiscellaneousConfig>(m, "MiscellaneousConfig")
-        .def(pybind11::init<int, int, int, bool>(),
-             pybind11::arg("load_balance")            = 0,
-             pybind11::arg("step_records_time_range") = 60 * 1000 * 1000,
-             pybind11::arg("step_records_max_size")   = 1000,
-             pybind11::arg("disable_pdl")             = true)
+        .def(pybind11::init<bool, std::string>(),
+             pybind11::arg("disable_pdl") = true,
+             pybind11::arg("aux_string")  = "")
         .def("to_string", &MiscellaneousConfig::to_string)
         .def("update_from_env", &MiscellaneousConfig::update_from_env_for_test)
-        .def_readwrite("load_balance", &MiscellaneousConfig::load_balance)
-        .def_readwrite("step_records_time_range", &MiscellaneousConfig::step_records_time_range)
-        .def_readwrite("step_records_max_size", &MiscellaneousConfig::step_records_max_size)
-        .def_readwrite("disable_pdl", &MiscellaneousConfig::disable_pdl);
+        .def_readwrite("disable_pdl", &MiscellaneousConfig::disable_pdl)
+        .def_readwrite("aux_string", &MiscellaneousConfig::aux_string);
 }
-
 
 void registerGptInitParameter(py::module m) {
     py::enum_<MlaOpsType>(m, "MlaOpsType")
@@ -668,8 +664,6 @@ void registerGptInitParameter(py::module m) {
     DEF_PROPERTY(decode_polling_call_prefill_ms, decode_polling_call_prefill_ms_)                                      \
     DEF_PROPERTY(rdma_connect_retry_times, rdma_connect_retry_times_)                                                  \
     DEF_PROPERTY(decode_entrance, decode_entrance_)                                                                    \
-    DEF_PROPERTY(load_balance_policy_name, load_balance_policy_name_)                                                  \
-    DEF_PROPERTY(sync_status_interval_ms, sync_status_interval_ms_)                                                    \
     DEF_PROPERTY(load_cache_timeout_ms, load_cache_timeout_ms_)                                                        \
     DEF_PROPERTY(max_rpc_timeout_ms, max_rpc_timeout_ms_)                                                              \
     DEF_PROPERTY(ep_size, ep_size_)                                                                                    \
@@ -678,6 +672,7 @@ void registerGptInitParameter(py::module m) {
     DEF_PROPERTY(local_rank, local_rank_)                                                                              \
     DEF_PROPERTY(rotary_embedding_mscale, rotary_embedding_mscale_)                                                    \
     DEF_PROPERTY(rotary_embedding_offset, rotary_embedding_offset_)                                                    \
+    DEF_PROPERTY(rotary_embedding_extrapolation_factor, rotary_embedding_extrapolation_factor_)                        \
     DEF_PROPERTY(use_mla, use_mla_)                                                                                    \
     DEF_PROPERTY(mla_ops_type, mla_ops_type_)                                                                          \
     DEF_PROPERTY(q_lora_rank, q_lora_rank_)                                                                            \
@@ -776,4 +771,4 @@ PYBIND11_MODULE(libth_transformer_config, m) {
     registerCommon(m);
 }
 
-}  // namespace torch_ext
+}  // namespace rtp_llm

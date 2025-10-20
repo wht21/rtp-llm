@@ -64,7 +64,7 @@ class FusedMoeDataRouter(ABC):
         topk_weights: torch.Tensor,
         topk_ids: torch.Tensor,
         apply_router_weight_on_input: bool,
-        weight_and_reduce_impl: TopKWeightAndReduce,
+        weight_and_reduce_impl: Union[TopKWeightAndReduce, None],
         extra_finalize_args: Optional[Dict[str, Any]],
     ) -> torch.Tensor:
         raise NotImplementedError
@@ -84,7 +84,7 @@ class FusedMoeExpertExecutor(ABC):
     def local_num_experts(self) -> int:
         raise NotImplementedError
 
-    def finalize_weight_and_reduce_impl(self) -> TopKWeightAndReduce:
+    def finalize_weight_and_reduce_impl(self) -> Union[TopKWeightAndReduce, None]:
         raise NotImplementedError
 
     @abstractmethod
@@ -177,7 +177,11 @@ class FusedMoe(torch.nn.Module):
             payload.expert_topk_weights,
             payload.expert_topk_ids,
             apply_router_weight_on_input,
-            self.fused_experts.finalize_weight_and_reduce_impl(),
+            (
+                None
+                if self.fused_experts.finalize_weight_and_reduce_impl is None
+                else self.fused_experts.finalize_weight_and_reduce_impl()
+            ),
             extra_finalize_args,
         )
 

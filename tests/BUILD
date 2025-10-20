@@ -22,19 +22,12 @@ cc_library(
             "int8_gemm/*.cc",
         ]),
         "//conditions:default": [],
-    }) + [":fa"],
-    deps = torch_deps() + [
-        ":fa_hdrs",
-        "//rtp_llm/cpp/cuda:allocator_torch",
-        "//rtp_llm/cpp/cuda:cuda",
+    }),
+    deps = [
         "//rtp_llm/cpp/cuda:memory_utils",
-        "//rtp_llm/cpp/cuda:quantize_utils",
-        "//rtp_llm/cpp/kernels:kernels_cu",
-        "//rtp_llm/cpp/kernels:scaled_fp8_quant",
-        "//rtp_llm/cpp/pybind:th_utils",
-        "//rtp_llm/cpp/devices/cuda_impl:cuda_impl",
-        "//rtp_llm/cpp/config:gpt_init_params",
-    ],
+        "//rtp_llm/cpp/cuda:allocator_torch",
+        "//rtp_llm/cpp/pybind:th_compute_lib",
+    ] + torch_deps(),
     copts = cuda_copts(),
     alwayslink = True,
     linkopts = [
@@ -45,24 +38,36 @@ cc_library(
 
 cc_binary(
     name = "test_ops",
-    deps = [":test_ops_libs"],
+    deps = [
+        ":test_ops_libs",
+    ],
+    data = [
+        "//:rtp_compute_ops",
+    ],
     linkshared = 1,
     visibility = ["//visibility:public"],
 )
+
+op_test_data = [
+    "//:th_transformer",
+    "//:rtp_compute_ops",
+    ":test_ops",
+    "//rtp_llm:rtp_llm_lib",
+]
+
+op_test_deps = [
+    "//rtp_llm:torch",
+    "//rtp_llm:numpy",
+    "//rtp_llm:transformers",
+]
 
 py_test(
     name = "generalT5LayerNorm",
     srcs = [
         "layernorm/generalT5LayerNorm.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-        "//rtp_llm:transformers",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     exec_properties = {'gpu':'A10'},
 )
 
@@ -71,13 +76,8 @@ py_test(
     srcs = [
         "layernorm/generalLayerNorm.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     exec_properties = {'gpu':'A10'},
 )
 
@@ -88,13 +88,8 @@ py_test(
         "rotary_embedding/yarn_rotary_embedding.py",
         "rotary_embedding/deepseek_yarn_rotary_embedding.py",
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-        "//rtp_llm:transformers",
+    data = op_test_data,
+    deps = op_test_deps + [
         "//rtp_llm:einops"
     ],
     exec_properties = {'gpu':'A10'},
@@ -105,13 +100,8 @@ py_test(
     srcs = [
         "attention_logn/logn_attention.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     exec_properties = {'gpu':'A10'},
 )
 
@@ -120,14 +110,8 @@ py_test(
     srcs = [
         "int8_gemm/th_int8_gemm.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops"
-    ],
-    deps = [
-        "//rtp_llm:torch",
-        "//rtp_llm:numpy",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     exec_properties = {'gpu':'A10'},
 )
 
@@ -136,14 +120,8 @@ py_test(
     srcs = [
         "gemm/gemm_op_test.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-        "//rtp_llm:numpy",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     tags = ["H20"],
     exec_properties = {'gpu':'H20'},
 )
@@ -153,14 +131,8 @@ py_test(
     srcs = [
         "fp8_gemm/th_fp8_gemm.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-        "//rtp_llm:numpy",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     tags = ["H20"],
     exec_properties = {'gpu':'H20'},
 )
@@ -170,14 +142,8 @@ py_test(
     srcs = [
         "gemm_dequantize/th_gemm_dequantize.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-        "//rtp_llm:numpy",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     exec_properties = {'gpu':'A10'},
 )
 
@@ -186,13 +152,8 @@ py_test(
     srcs = [
         "mla/merge_transpose_test.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
-    ],
+    data = op_test_data,
+    deps = op_test_deps,
     exec_properties = {'gpu':'A10'},
 )
 
@@ -202,12 +163,8 @@ py_test(
         "mla/mla_context_attention.py",
         "mla/test_util.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
+    data = op_test_data,
+    deps = op_test_deps + [
         "//rtp_llm:flash_attn",
     ],
     exec_properties = {'gpu':'A10'},
@@ -221,12 +178,8 @@ py_test(
         "mla/mla_decode_attention.py",
         "mla/test_util.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
+    data = op_test_data,
+    deps = op_test_deps + [
         "//rtp_llm:rtp_llm_lib",
     ],
     exec_properties = {'gpu':'A10'},
@@ -371,12 +324,8 @@ py_test(
         "mla/test_util.py",
         "mla/rotary_util.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
+    data = op_test_data,
+    deps = op_test_deps + [
         "//rtp_llm:rtp_llm_lib",
     ],
     exec_properties = {'gpu':'A10'},
@@ -389,11 +338,8 @@ py_test(
         "mla/bench_mla_attention_layer.py",
         "mla/test_util.py"
     ],
-    data = [
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
+    data = op_test_data,
+    deps = op_test_deps + [
         "//rtp_llm:rtp_llm_lib",
     ],
     tags = [
@@ -464,12 +410,8 @@ py_test(
     srcs = [
         "layernorm/fused_qk_rmsnorm.py"
     ],
-    data = [
-        "//:th_transformer",
-        ":test_ops",
-    ],
-    deps = [
-        "//rtp_llm:torch",
+    data = op_test_data,
+    deps = op_test_deps + [
         "//rtp_llm:rtp_llm_lib",
     ],
     exec_properties = {'gpu':'A10'},
